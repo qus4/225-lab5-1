@@ -2,11 +2,12 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_CREDENTIALS_ID = 'roseaw-dockerhub'
-        DOCKER_IMAGE = 'cithit/qus4'                   // your MiamiID
-        GITHUB_URL = 'https://github.com/qus4/225-lab5-1.git'
-        KUBECONFIG = credentials('qus4-225')
-    }
+    DOCKER_CREDENTIALS_ID = 'roseaw-dockerhub'
+    DOCKER_IMAGE = 'qus4/225-lab5-1'   // ← 修改为你自己的仓库
+    IMAGE_TAG = "dev-${BUILD_NUMBER}"
+    GITHUB_URL = 'https://github.com/qus4/225-lab5-1.git'
+    KUBECONFIG = credentials('qus4-225')
+}
 
     stages {
 
