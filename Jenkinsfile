@@ -6,43 +6,37 @@ pipeline {
         DOCKER_IMAGE = 'cithit/qus4'
         IMAGE_TAG = "build-${BUILD_NUMBER}"
         GITHUB_URL = 'https://github.com/qus4/225-lab5-1.git'
-        KCFG = credentials('qus4-225')    // <-- your kubeconfig file
+        KCFG_FILE = credentials('qus4-225')    // your kubeconfig
     }
 
     stages {
 
-        /* ---------------------------
-         * 1. Checkout GitHub Source Code
-         * --------------------------- */
+        /* ------------------------- CHECKOUT ------------------------- */
         stage('Checkout Code') {
             steps {
                 cleanWs()
                 checkout([$class: 'GitSCM',
-                  branches: [[name: '*/main']],
-                  userRemoteConfigs: [[url: "${GITHUB_URL}"]]
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: "${GITHUB_URL}"]]
                 ])
             }
         }
 
-        /* ---------------------------
-         * 2. Load kubeconfig to Jenkins
-         * --------------------------- */
+        /* --------------------- LOAD KUBECONFIG ---------------------- */
         stage('Load Kubeconfig') {
             steps {
                 withCredentials([file(credentialsId: 'qus4-225', variable: 'KCFG_FILE')]) {
                     sh '''
-                        mkdir -p ~/.kube
-                        cp "$KCFG_FILE" ~/.kube/config
-                        chmod 600 ~/.kube/config
+                        mkdir -p /var/lib/jenkins/.kube
+                        cp "$KCFG_FILE" /var/lib/jenkins/.kube/config
+                        chmod 600 /var/lib/jenkins/.kube/config
                         echo "[OK] Kubeconfig loaded"
                     '''
                 }
             }
         }
 
-        /* ---------------------------
-         * 3. Test kubectl Authentication
-         * --------------------------- */
+        /* --------------------- AUTH TEST ---------------------------- */
         stage('Test kubectl') {
             steps {
                 sh '''
@@ -55,9 +49,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------
-         * 4. Build & Push DEV Image
-         * --------------------------- */
+        /* ------------------------- BUILD ---------------------------- */
         stage('Build & Push DEV Image') {
             steps {
                 script {
@@ -69,21 +61,16 @@ pipeline {
             }
         }
 
-        /* ---------------------------
-         * 5. Deploy to DEV namespace
-         * --------------------------- */
+        /* ------------------------ DEV DEPLOY ------------------------ */
         stage('Deploy to DEV') {
             steps {
-                sh '''
-                    sed -i "s|cithit/qus4:latest|cithit/qus4:'"${IMAGE_TAG}"'|" deployment-dev.yaml
+                sh """
+                    sed -i 's|cithit/qus4:latest|cithit/qus4:${IMAGE_TAG}|g' deployment-dev.yaml
                     kubectl apply -f deployment-dev.yaml
-                '''
+                """
             }
         }
 
-        /* ---------------------------
-         * 6. Wait for DEV Pods
-         * --------------------------- */
         stage('Wait for DEV Pods') {
             steps {
                 sh '''
@@ -93,76 +80,51 @@ pipeline {
             }
         }
 
-        /* ---------------------------
-         * 7. Generate Test Data in DEV
-         * --------------------------- */
+        /* ------------------------ TEST DATA ------------------------- */
         stage('Generate Test Data (DEV)') {
             steps {
-                script {
-                    def pod = sh(
-                      script: "kubectl get pods -l app=flask-dev -o jsonpath='{.items[0].metadata.name}'",
-                      returnStdout: true
-                    ).trim()
-
-                    sh "kubectl exec ${pod} -- python3 data-gen.py"
-                }
+                sh '''
+                    POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[0].metadata.name}")
+                    kubectl exec $POD -- python3 data-gen.py
+                '''
             }
         }
 
-        /* ---------------------------
-         * 8. Run Acceptance Tests (requests-based)
-         * --------------------------- */
+        /* ------------------------ TESTS ----------------------------- */
         stage('Acceptance Tests') {
             steps {
-                sh '''
-                    docker build -t qa-tests -f Dockerfile.test .
-                    docker run --rm qa-tests
-                '''
+                sh "docker build -t qa-tests -f Dockerfile.test ."
             }
         }
 
-        /* ---------------------------
-         * 9. Clear test data after testing
-         * --------------------------- */
+        /* ------------------------ CLEAR TEST DATA ------------------- */
         stage('Clear Test Data') {
             steps {
-                script {
-                    def pod = sh(
-                      script: "kubectl get pods -l app=flask-dev -o jsonpath='{.items[0].metadata.name}'",
-                      returnStdout: true
-                    ).trim()
-
-                    sh "kubectl exec ${pod} -- python3 data-clear.py"
-                }
-            }
-        }
-
-        /* ---------------------------
-         * 10. Deploy to PROD environment
-         * --------------------------- */
-        stage('Deploy to PROD') {
-            steps {
                 sh '''
-                    sed -i "s|cithit/qus4:latest|cithit/qus4:'"${IMAGE_TAG}"'|" deployment-prod.yaml
-                    kubectl apply -f deployment-prod.yaml
+                    POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[0].metadata.name}")
+                    kubectl exec $POD -- python3 data-clear.py
                 '''
             }
         }
 
-        /* ---------------------------
-         * 11. Check Production Status
-         * --------------------------- */
-        stage('Check Cluster Resources') {
+        /* ------------------------ PROD DEPLOY ----------------------- */
+        stage('Deploy to PROD') {
             steps {
-                sh 'kubectl get all -n default'
+                sh """
+                    sed -i 's|cithit/qus4:latest|cithit/qus4:${IMAGE_TAG}|g' deployment-prod.yaml
+                    kubectl apply -f deployment-prod.yaml
+                """
             }
         }
 
-    } // end stages
+        /* ------------------------ CLUSTER CHECK --------------------- */
+        stage('Check Cluster Resources') {
+            steps {
+                sh "kubectl get all -n default"
+            }
+        }
+    }
 
-    /* ---------------------------
-     * POST actions
-     * --------------------------- */
     post {
         success {
             slackSend(color: "good", message: "Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
@@ -171,5 +133,4 @@ pipeline {
             slackSend(color: "danger", message: "Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
         }
     }
-
 }
