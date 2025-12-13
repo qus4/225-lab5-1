@@ -32,8 +32,10 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
-                        sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -f Dockerfile.build ."
-                        sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                        sh """
+                        docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -f Dockerfile.build .
+                        docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                        """
                     }
                 }
             }
@@ -42,24 +44,29 @@ pipeline {
         stage('Deploy to DEV') {
             steps {
                 script {
-                    sh "sed -i 's|cithit/qus4:latest|cithit/qus4:${IMAGE_TAG}|' deployment-dev.yaml"
-                    sh "kubectl apply -f deployment-dev.yaml"
+                    sh """
+                    sed -i 's|cithit/qus4:latest|cithit/qus4:${IMAGE_TAG}|' deployment-dev.yaml
+                    kubectl apply -f deployment-dev.yaml
+                    """
                 }
             }
         }
 
         stage('Wait for DEV Pods') {
             steps {
-                sh "sleep 10"
                 sh "kubectl get pods"
+                sh "sleep 10"
             }
         }
 
         stage('Generate Test Data (DEV)') {
             steps {
                 script {
-                    sh "sleep 5"
-                    def pod = sh(script: \"kubectl get pods -l app=flask-dev -o jsonpath='{.items[0].metadata.name}'\", returnStdout: true).trim()
+                    def pod = sh(
+                        script: """kubectl get pods -l app=flask-dev -o jsonpath='{.items[0].metadata.name}'""",
+                        returnStdout: true
+                    ).trim()
+
                     sh "kubectl exec ${pod} -- python3 data-gen.py"
                 }
             }
@@ -74,7 +81,11 @@ pipeline {
         stage('Clear Test Data (DEV)') {
             steps {
                 script {
-                    def pod = sh(script: \"kubectl get pods -l app=flask-dev -o jsonpath='{.items[0].metadata.name}'\", returnStdout: true).trim()
+                    def pod = sh(
+                        script: """kubectl get pods -l app=flask-dev -o jsonpath='{.items[0].metadata.name}'""",
+                        returnStdout: true
+                    ).trim()
+
                     sh "kubectl exec ${pod} -- python3 data-clear.py"
                 }
             }
@@ -83,8 +94,10 @@ pipeline {
         stage('Deploy to PROD') {
             steps {
                 script {
-                    sh "sed -i 's|cithit/qus4:latest|cithit/qus4:${IMAGE_TAG}|' deployment-prod.yaml"
-                    sh "kubectl apply -f deployment-prod.yaml"
+                    sh """
+                    sed -i 's|cithit/qus4:latest|cithit/qus4:${IMAGE_TAG}|' deployment-prod.yaml
+                    kubectl apply -f deployment-prod.yaml
+                    """
                 }
             }
         }
@@ -105,3 +118,4 @@ pipeline {
         }
     }
 }
+
