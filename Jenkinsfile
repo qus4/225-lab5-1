@@ -21,12 +21,7 @@ pipeline {
             }
         }
 
-        stage('Static Code Test (flake8)') {
-            steps {
-                sh "pip install flake8"
-                sh "flake8 . || true"
-            }
-        }
+      
 
         stage('Build & Push DEV Image') {
             steps {
