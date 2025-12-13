@@ -18,9 +18,12 @@ spec:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:latest      # Jenkins 会自动替换成 build-XX
+          image: cithit/qus4:latest
           ports:
             - containerPort: 5000
+          env:
+            - name: DB_NAME
+              value: "prod_contacts.db"
           volumeMounts:
             - name: nfs-storage
               mountPath: /nfs
@@ -36,8 +39,7 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    - protocol: TCP
-      port: 80
+    - port: 80
       targetPort: 5000
   selector:
     app: flask-prod
