@@ -1,3 +1,6 @@
+# -------------------------
+# Persistent Volume (create once)
+# -------------------------
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -10,14 +13,18 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    path:  /srv/nfs/qus4         #your MiamiID
+    path: /srv/nfs/qus4      # your MiamiID
     server: 10.48.228.25
   persistentVolumeReclaimPolicy: Retain
+
 ---
+# -------------------------
+# Persistent Volume Claim (create once)
+# -------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: flask-pvc    
+  name: flask-pvc
 spec:
   accessModes:
     - ReadWriteMany
@@ -27,28 +34,32 @@ spec:
   selector:
     matchLabels:
       type: nfs
+
 ---
+# -------------------------
+# DEV Deployment (corrected)
+# -------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flask-dev-deployment
   labels:
-    app: flask
+    app: flask-dev                    # IMPORTANT: DEV label
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: flask
+      app: flask-dev                  # MUST match template labels
   template:
     metadata:
       labels:
-        app: flask
+        app: flask-dev                # MUST match selector
     spec:
       imagePullSecrets:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:latest    #your MiamiID
+          image: cithit/qus4:dev      # IMPORTANT: dev tag
           ports:
             - containerPort: 5000
           volumeMounts:
@@ -58,33 +69,41 @@ spec:
         - name: nfs-storage
           persistentVolumeClaim:
             claimName: flask-pvc
+
 ---
+# -------------------------
+# DEV Service (corrected)
+# -------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: flask-dev-service
-spec:                                   
-  ports:
-  - protocol: TCP
-    port: 80  
-    targetPort: 5000
+spec:
+  type: ClusterIP
   selector:
-    app: flask
+    app: flask-dev                   # MUST match deployment labels
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
 
 ---
+# -------------------------
+# DEV Ingress (corrected)
+# -------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: nginx
+  name: flask-dev-ingress
 spec:
-  rules: 
-  - host: 
-    http:
-      paths:
-      - path: /
-        pathType: ImplementationSpecific
-        backend: 
-          service:
-            name: flask-dev-service
-            port:
-              number: 80
+  rules:
+    - host: qus4.apps.cse.miamioh.edu    # <<< USE YOUR ASSIGNED HOSTNAME HERE
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: flask-dev-service
+                port:
+                  number: 80
