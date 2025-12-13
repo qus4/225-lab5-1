@@ -1,6 +1,33 @@
-# -------------------------
-# DEV Deployment
-# -------------------------
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: flask-pv
+  labels:
+    type: nfs
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /srv/nfs/qus4
+    server: 10.48.228.25
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flask-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      type: nfs
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,31 +48,26 @@ spec:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:dev        # MUST use dev tag
+          image: cithit/qus4:latest
           ports:
             - containerPort: 5000
           volumeMounts:
             - name: nfs-storage
-              mountPath: /nfs           # Your SQLite DB location
+              mountPath: /nfs
       volumes:
         - name: nfs-storage
           persistentVolumeClaim:
             claimName: flask-pvc
-
 ---
-# -------------------------
-# DEV Service
-# -------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: flask-dev-service
 spec:
   type: LoadBalancer
-  selector:
-    app: flask-dev
   ports:
     - protocol: TCP
       port: 80
       targetPort: 5000
-
+  selector:
+    app: flask-dev
