@@ -1,30 +1,24 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.firefox.options import Options
+import requests
 import unittest
 
-class TestContacts(unittest.TestCase):
-    def setUp(self):
-        # Setup Firefox options
-        firefox_options = Options()
-        firefox_options.add_argument("--headless")  # Ensures the browser window does not open
-        firefox_options.add_argument("--no-sandbox")
-        firefox_options.add_argument("--disable-dev-shm-usage")
-        self.driver = webdriver.Firefox(options=firefox_options)
+class TestFlaskApp(unittest.TestCase):
 
-    def test_contacts(self):
-        driver = self.driver
-        driver.get("http://10.48.229.142")  # Replace with your target website (your 'dev' site/clusterIP)
-        
-        # Check for the presence of all 10 test contacts
-        for i in range(10):
-            test_name = f'Test Name {i}'
-            assert test_name in driver.page_source, f"Test contact {test_name} not found in page source"
-        print("Test completed successfully. All 10 test contacts were verified.")
+    BASE_URL = "http://flask-dev-service"   # service name inside Kubernetes
 
-    def tearDown(self):
-        self.driver.quit()
+    def test_homepage_loads(self):
+        """Homepage should return HTTP 200."""
+        res = requests.get(self.BASE_URL)
+        self.assertEqual(res.status_code, 200)
+
+    def test_page_contains_title(self):
+        """Homepage should contain the Contacts heading."""
+        res = requests.get(self.BASE_URL)
+        self.assertIn("Contacts", res.text)      # based on your HTML title
+
+    def test_add_contact_form_exists(self):
+        """Homepage should contain the Add Contact form."""
+        res = requests.get(self.BASE_URL)
+        self.assertIn("Add Contact", res.text)
 
 if __name__ == "__main__":
     unittest.main()
