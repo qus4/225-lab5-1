@@ -18,7 +18,7 @@ spec:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:latest
+          image: cithit/qus4:latest      # Jenkins 会自动替换成 build-XX
           ports:
             - containerPort: 5000
           volumeMounts:
@@ -35,11 +35,9 @@ metadata:
   name: flask-prod-service
 spec:
   type: LoadBalancer
-  loadBalancerIP: 10.48.229.52
   ports:
     - protocol: TCP
       port: 80
       targetPort: 5000
   selector:
     app: flask-prod
-
