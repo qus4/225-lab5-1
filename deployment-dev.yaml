@@ -1,65 +1,27 @@
 # -------------------------
-# Persistent Volume (create once)
-# -------------------------
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: flask-pv
-  labels:
-    type: nfs
-spec:
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteMany
-  nfs:
-    path: /srv/nfs/qus4      # your MiamiID
-    server: 10.48.228.25
-  persistentVolumeReclaimPolicy: Retain
-
----
-# -------------------------
-# Persistent Volume Claim (create once)
-# -------------------------
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: flask-pvc
-spec:
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      type: nfs
-
----
-# -------------------------
-# DEV Deployment (corrected)
+# DEV Deployment
 # -------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flask-dev-deployment
   labels:
-    app: flask-dev                    # IMPORTANT: DEV label
+    app: flask-dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: flask-dev                  # MUST match template labels
+      app: flask-dev
   template:
     metadata:
       labels:
-        app: flask-dev                # MUST match selector
+        app: flask-dev
     spec:
       imagePullSecrets:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:dev      # IMPORTANT: dev tag
+          image: cithit/qus4:dev      # <-- MUST use dev tag
           ports:
             - containerPort: 5000
           volumeMounts:
@@ -72,38 +34,17 @@ spec:
 
 ---
 # -------------------------
-# DEV Service (corrected)
+# DEV Service
 # -------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: flask-dev-service
 spec:
-  type: ClusterIP
+  type: LoadBalancer                 # You use LB so KEEP this
   selector:
-    app: flask-dev                   # MUST match deployment labels
+    app: flask-dev
   ports:
     - protocol: TCP
       port: 80
       targetPort: 5000
-
----
-# -------------------------
-# DEV Ingress (corrected)
-# -------------------------
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: flask-dev-ingress
-spec:
-  rules:
-    - host: qus4.apps.cse.miamioh.edu    # <<< USE YOUR ASSIGNED HOSTNAME HERE
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: flask-dev-service
-                port:
-                  number: 80
