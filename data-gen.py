@@ -1,9 +1,8 @@
 import sqlite3
 import os
 
-# Dynamic DB path (same as main.py)
-DB_NAME = os.environ.get("DB_NAME", "contacts.db")
-DB_PATH = f"/nfs/{DB_NAME}"
+# Always use DEV database for test data
+DB_PATH = "/nfs/dev_contacts.db"
 
 def ensure_table():
     conn = sqlite3.connect(DB_PATH)
@@ -23,8 +22,8 @@ def generate_test_data():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    print("[OK] Clearing old test data...")
-    c.execute("DELETE FROM contacts")
+    print("[OK] Clearing old *test* data only...")
+    c.execute("DELETE FROM contacts WHERE name LIKE 'TestUser_%'")
 
     print("[OK] Inserting 20 test contacts...")
 
@@ -41,3 +40,4 @@ def generate_test_data():
 if __name__ == "__main__":
     ensure_table()
     generate_test_data()
+
