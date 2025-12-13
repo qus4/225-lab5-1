@@ -3,20 +3,20 @@ import unittest
 
 class TestFlaskApp(unittest.TestCase):
 
-    BASE_URL = "http://flask-dev-service"   # service name inside Kubernetes
+    BASE_URL = "http://flask-dev-service"   # Kubernetes DNS for DEV
 
     def test_homepage_loads(self):
-        """Homepage should return HTTP 200."""
+        """Check homepage returns HTTP 200."""
         res = requests.get(self.BASE_URL)
         self.assertEqual(res.status_code, 200)
 
     def test_page_contains_title(self):
-        """Homepage should contain the Contacts heading."""
+        """Check homepage contains expected title."""
         res = requests.get(self.BASE_URL)
-        self.assertIn("Contacts", res.text)      # based on your HTML title
+        self.assertIn("Contacts", res.text)
 
     def test_add_contact_form_exists(self):
-        """Homepage should contain the Add Contact form."""
+        """Check Add Contact form exists on the page."""
         res = requests.get(self.BASE_URL)
         self.assertIn("Add Contact", res.text)
 
