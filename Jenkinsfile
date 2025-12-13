@@ -110,7 +110,7 @@ pipeline {
                     POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
                     echo "Using POD: $POD"
                     kubectl exec $POD -- python3 data-clear.py
-                    sleep 10
+                    sleep 5
                 '''
             }
         }
