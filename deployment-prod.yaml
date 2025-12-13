@@ -21,7 +21,7 @@ spec:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:prod     # <-- MUST use prod tag
+          image: cithit/qus4:prod       # MUST use prod tag
           ports:
             - containerPort: 5000
           volumeMounts:
@@ -42,11 +42,10 @@ metadata:
   name: flask-prod-service
 spec:
   type: LoadBalancer
-  loadBalancerIP: 10.48.229.52       # <-- You confirmed this is correct
+  loadBalancerIP: 10.48.229.52        # YOUR assigned static IP
   selector:
     app: flask-prod
   ports:
     - protocol: TCP
       port: 80
       targetPort: 5000
-
