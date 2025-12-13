@@ -82,13 +82,15 @@ pipeline {
 
         /* ------------------------ TEST DATA ------------------------- */
         stage('Generate Test Data (DEV)') {
-            steps {
-                sh '''
-                    POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[0].metadata.name}")
-                    kubectl exec $POD -- python3 data-gen.py
-                '''
-            }
-        }
+    steps {
+        sh '''
+            POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
+            echo "Using POD: $POD"
+            kubectl exec $POD -- python3 data-gen.py
+        '''
+    }
+}
+
 
         /* ------------------------ TESTS ----------------------------- */
         stage('Acceptance Tests') {
@@ -99,13 +101,15 @@ pipeline {
 
         /* ------------------------ CLEAR TEST DATA ------------------- */
         stage('Clear Test Data') {
-            steps {
-                sh '''
-                    POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[0].metadata.name}")
-                    kubectl exec $POD -- python3 data-clear.py
-                '''
-            }
-        }
+    steps {
+        sh '''
+            POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
+            echo "Using POD: $POD"
+            kubectl exec $POD -- python3 data-clear.py
+        '''
+    }
+}
+
 
         /* ------------------------ PROD DEPLOY ----------------------- */
         stage('Deploy to PROD') {
