@@ -1,42 +1,4 @@
 # -------------------------
-# Persistent Volume (only create once)
-# -------------------------
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: flask-pv
-  labels:
-    type: nfs
-spec:
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteMany
-  nfs:
-    path: /srv/nfs/qus4                 # YOUR MiamiID
-    server: 10.48.228.25
-  persistentVolumeReclaimPolicy: Retain
-
----
-# -------------------------
-# Persistent Volume Claim (only create once)
-# -------------------------
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: flask-pvc
-spec:
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      type: nfs
-
----
-# -------------------------
 # PROD Deployment
 # -------------------------
 apiVersion: apps/v1
@@ -44,27 +6,27 @@ kind: Deployment
 metadata:
   name: flask-prod-deployment
   labels:
-    app: flask-prod                     # MUST be flask-prod
+    app: flask-prod
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: flask-prod                   # MUST match labels
+      app: flask-prod
   template:
     metadata:
       labels:
-        app: flask-prod                 # MUST match labels
+        app: flask-prod
     spec:
       imagePullSecrets:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:prod       # MUST NOT use latest
+          image: cithit/qus4:prod     # <-- MUST use prod tag
           ports:
             - containerPort: 5000
           volumeMounts:
             - name: nfs-storage
-              mountPath: /nfs           # must match your Flask DB path (/nfs/demo.db)
+              mountPath: /nfs
       volumes:
         - name: nfs-storage
           persistentVolumeClaim:
@@ -80,10 +42,11 @@ metadata:
   name: flask-prod-service
 spec:
   type: LoadBalancer
-  loadBalancerIP: 10.48.229.52          # You already confirmed this IP is correct
+  loadBalancerIP: 10.48.229.52       # <-- You confirmed this is correct
+  selector:
+    app: flask-prod
   ports:
     - protocol: TCP
       port: 80
       targetPort: 5000
-  selector:
-    app: flask-prod                     # MUST match deployment labels
+
