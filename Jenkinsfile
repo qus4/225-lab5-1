@@ -6,12 +6,12 @@ pipeline {
         DOCKER_IMAGE = 'cithit/qus4'
         IMAGE_TAG = "build-${BUILD_NUMBER}"
         GITHUB_URL = 'https://github.com/qus4/225-lab5-1.git'
-        KCFG_FILE = credentials('qus4-225')    // your kubeconfig
+        KCFG_FILE = credentials('qus4-225')
     }
 
     stages {
 
-        /* ------------------------- CHECKOUT ------------------------- */
+        /* -------------------- CHECKOUT -------------------- */
         stage('Checkout Code') {
             steps {
                 cleanWs()
@@ -22,7 +22,7 @@ pipeline {
             }
         }
 
-        /* --------------------- LOAD KUBECONFIG ---------------------- */
+        /* ------------------- LOAD KUBECONFIG ------------------- */
         stage('Load Kubeconfig') {
             steps {
                 withCredentials([file(credentialsId: 'qus4-225', variable: 'KCFG_FILE')]) {
@@ -36,20 +36,17 @@ pipeline {
             }
         }
 
-        /* --------------------- AUTH TEST ---------------------------- */
+        /* ------------------- AUTH TEST ------------------- */
         stage('Test kubectl') {
             steps {
                 sh '''
-                    echo "[TEST] kubectl config view"
                     kubectl config view
-
-                    echo "[TEST] kubectl get nodes"
                     kubectl get nodes
                 '''
             }
         }
 
-        /* ------------------------- BUILD ---------------------------- */
+        /* ------------------- BUILD ------------------- */
         stage('Build & Push DEV Image') {
             steps {
                 script {
@@ -61,7 +58,7 @@ pipeline {
             }
         }
 
-        /* ------------------------ DEV DEPLOY ------------------------ */
+        /* ------------------- DEPLOY DEV ------------------- */
         stage('Deploy to DEV') {
             steps {
                 sh """
@@ -80,38 +77,75 @@ pipeline {
             }
         }
 
-        /* ------------------------ TEST DATA ------------------------- */
+        /* ⭐ DEMO PAUSE #1 */
+        stage('Pause Demo After DEV Deploy') {
+            steps {
+                sh '''
+                    echo "[DEMO PAUSE] 12s pause for DEV demo"
+                    sleep 12
+                '''
+            }
+        }
+
+        /* ------------------- TEST DATA ------------------- */
         stage('Generate Test Data (DEV)') {
-    steps {
-        sh '''
-            POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
-            echo "Using POD: $POD"
-            kubectl exec $POD -- python3 data-gen.py
-        '''
-    }
-}
+            steps {
+                sh '''
+                    POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
+                    echo "Using POD: $POD"
+                    kubectl exec $POD -- python3 data-gen.py
+                '''
+            }
+        }
 
+        /* ⭐ DEMO PAUSE #2 */
+        stage('Pause Demo After Data Generation') {
+            steps {
+                sh '''
+                    echo "[DEMO PAUSE] 12s pause to show test data"
+                    sleep 12
+                '''
+            }
+        }
 
-        /* ------------------------ TESTS ----------------------------- */
+        /* ------------------- TESTS ------------------- */
         stage('Acceptance Tests') {
             steps {
                 sh "docker build -t qa-tests -f Dockerfile.test ."
             }
         }
 
-        /* ------------------------ CLEAR TEST DATA ------------------- */
+        /* ⭐ DEMO PAUSE #3 */
+        stage('Pause Demo After Tests') {
+            steps {
+                sh '''
+                    echo "[DEMO PAUSE] 12s pause to show test results"
+                    sleep 12
+                '''
+            }
+        }
+
+        /* ------------------- CLEAR TEST DATA ------------------- */
         stage('Clear Test Data') {
-    steps {
-        sh '''
-            POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
-            echo "Using POD: $POD"
-            kubectl exec $POD -- python3 data-clear.py
-        '''
-    }
-}
+            steps {
+                sh '''
+                    POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
+                    kubectl exec $POD -- python3 data-clear.py
+                '''
+            }
+        }
 
+        /* ⭐ DEMO PAUSE #4 */
+        stage('Pause Before PROD Deploy') {
+            steps {
+                sh '''
+                    echo "[DEMO PAUSE] 12s pause before PROD deploy"
+                    sleep 12
+                '''
+            }
+        }
 
-        /* ------------------------ PROD DEPLOY ----------------------- */
+        /* ------------------- DEPLOY PROD ------------------- */
         stage('Deploy to PROD') {
             steps {
                 sh """
@@ -121,7 +155,7 @@ pipeline {
             }
         }
 
-        /* ------------------------ CLUSTER CHECK --------------------- */
+        /* ------------------- CLUSTER CHECK ------------------- */
         stage('Check Cluster Resources') {
             steps {
                 sh "kubectl get all -n default"
@@ -131,10 +165,10 @@ pipeline {
 
     post {
         success {
-            slackSend(color: "good", message: "Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+            slackSend(color: "good", message: "Build SUCCESS")
         }
         failure {
-            slackSend(color: "danger", message: "Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+            slackSend(color: "danger", message: "Build FAILED")
         }
     }
 }
