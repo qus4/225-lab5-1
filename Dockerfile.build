@@ -7,21 +7,21 @@ RUN apt-get clean && apt-get -y update && apt-get -y install \
     nfs-common \
     && rm -rf /var/lib/apt/lists/*
 
-# Create NFS mount point (used by Kubernetes PVC)
+# Create NFS mount point (Kubernetes will mount here)
 RUN mkdir -p /nfs
 
 # Set working directory
 WORKDIR /usr/src/app
 
-# Copy requirement file and install Python dependencies
+# Install Python dependencies first (better caching)
 COPY requirements1.txt .
 RUN pip install --no-cache-dir -r requirements1.txt
 
-# Copy application code
+# Copy the rest of the application code
 COPY . .
 
-# Expose app port
+# Expose port
 EXPOSE 5000
 
-# Start Flask application
+# Run Flask app
 CMD ["python3", "main.py"]
