@@ -164,11 +164,17 @@ pipeline {
     }
 
     post {
-        success {
-            slackSend(color: "good", message: "Build SUCCESS")
-        }
-        failure {
-            slackSend(color: "danger", message: "Build FAILED")
-        }
+    success {
+        slackSend(
+            color: "good",
+            message: "Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        )
+    }
+    failure {
+        slackSend(
+            color: "danger",
+            message: "Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        )
     }
 }
+
