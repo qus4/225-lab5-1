@@ -40,4 +40,3 @@ def generate_test_data():
 if __name__ == "__main__":
     ensure_table()
     generate_test_data()
-
