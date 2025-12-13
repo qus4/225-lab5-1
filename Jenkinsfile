@@ -89,7 +89,7 @@ pipeline {
                     POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
                     echo "Using POD: $POD"
                     kubectl exec $POD -- python3 data-gen.py
-                    sleep 5
+                    sleep 10
                 '''
             }
         }
@@ -99,7 +99,7 @@ pipeline {
             steps {
                 sh "docker build -t qa-tests -f Dockerfile.test ."
                 sh "echo '[INFO] Test container built successfully'"
-                sleep 5
+                sleep 10
             }
         }
 
@@ -110,7 +110,7 @@ pipeline {
                     POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
                     echo "Using POD: $POD"
                     kubectl exec $POD -- python3 data-clear.py
-                    sleep 5
+                    sleep 10
                 '''
             }
         }
