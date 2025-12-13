@@ -15,6 +15,7 @@ def get_db():
     return db
 
 def init_db():
+    """Create the database and table if they do not exist."""
     with app.app_context():
         db = get_db()
         db.execute('''
@@ -26,57 +27,74 @@ def init_db():
         ''')
         db.commit()
         db.close()
+        print("[INIT] Database initialized at /nfs/demo.db")
+
+@app.route("/health")
+def health():
+    """Simple health check endpoint for Kubernetes readiness/liveness."""
+    return {"status": "ok"}, 200
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         action = request.form.get('action')
 
+        # DELETE
         if action == 'delete':
             contact_id = request.form.get('contact_id')
             if contact_id:
                 db = get_db()
                 db.execute('DELETE FROM contacts WHERE id = ?', (contact_id,))
-                db.commit(); db.close()
+                db.commit()
+                db.close()
                 flash('Contact deleted successfully.', 'success')
             else:
                 flash('Missing contact id.', 'danger')
             return redirect(url_for('index'))
 
+        # UPDATE
         if action == 'update':
             contact_id = request.form.get('contact_id')
             name = request.form.get('name')
             phone = request.form.get('phone')
             if contact_id and name and phone:
                 db = get_db()
-                db.execute('UPDATE contacts SET name=?, phone=? WHERE id=?', (name, phone, contact_id))
-                db.commit(); db.close()
+                db.execute(
+                    'UPDATE contacts SET name=?, phone=? WHERE id=?',
+                    (name, phone, contact_id)
+                )
+                db.commit()
+                db.close()
                 flash('Contact updated.', 'success')
             else:
                 flash('Missing fields for update.', 'danger')
             return redirect(url_for('index'))
 
-        # default → add
+        # ADD
         name = request.form.get('name')
         phone = request.form.get('phone')
         if name and phone:
             db = get_db()
             db.execute('INSERT INTO contacts (name, phone) VALUES (?, ?)', (name, phone))
-            db.commit(); db.close()
+            db.commit()
+            db.close()
             flash('Contact added successfully.', 'success')
         else:
             flash('Missing name or phone number.', 'danger')
+
         return redirect(url_for('index'))
 
-    # GET: pagination
+    # GET: Pagination
     try:
         page = max(int(request.args.get('page', 1)), 1)
     except ValueError:
         page = 1
+
     try:
         per_page = max(int(request.args.get('per', PER_PAGE_DEFAULT)), 1)
     except ValueError:
         per_page = PER_PAGE_DEFAULT
+
     offset = (page - 1) * per_page
 
     db = get_db()
@@ -96,12 +114,18 @@ def index():
     return render_template(
         'index.html',
         contacts=contacts,
-        page=page, pages=pages, per_page=per_page,
-        has_prev=has_prev, has_next=has_next, total=total,
-        start_page=start_page, end_page=end_page
+        page=page,
+        pages=pages,
+        per_page=per_page,
+        has_prev=has_prev,
+        has_next=has_next,
+        total=total,
+        start_page=start_page,
+        end_page=end_page
     )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     init_db()
     app.run(debug=True, host='0.0.0.0', port=port)
+
