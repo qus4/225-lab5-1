@@ -33,5 +33,5 @@ def generate_test_data(num_contacts):
 
 if __name__ == '__main__':
     init_table()
-    generate_test_data(10)
+    generate_test_data(25)
 
