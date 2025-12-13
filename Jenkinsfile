@@ -3,9 +3,9 @@ pipeline {
 
     environment {
         DOCKER_CREDENTIALS_ID = 'roseaw-dockerhub'
-        DOCKER_IMAGE = 'cithit/qus4'                       // your MiamiID repo
+        DOCKER_IMAGE = 'cithit/qus4'                   // your MiamiID
         GITHUB_URL = 'https://github.com/qus4/225-lab5-1.git'
-        KUBECONFIG = credentials('qus4-225')               // your MiamiID-225
+        KUBECONFIG = credentials('qus4-225')
     }
 
     stages {
@@ -43,12 +43,12 @@ pipeline {
                 script {
                     sh "sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:dev|' deployment-dev.yaml"
                     sh "kubectl apply -f deployment-dev.yaml"
-                    sh "kubectl apply -f service-dev.yaml"
+                    sh "kubectl apply -f service-dev.yaml || true"
                 }
             }
         }
 
-        stage("Wait for DEV Pod") {
+        stage('Wait for DEV Pods') {
             steps {
                 sh "sleep 20"
                 sh "kubectl get pods"
@@ -64,14 +64,16 @@ pipeline {
             }
         }
 
-        stage("Dynamic Test (Acceptance Tests)") {
+        stage("Run Acceptance Tests") {
             steps {
-                sh "docker build -t test-runner -f Dockerfile.test ."
-                sh "docker run test-runner"
+                script {
+                    sh "docker build -t test-runner -f Dockerfile.test ."
+                    sh "docker run test-runner"
+                }
             }
         }
 
-        stage("Clear Test Data in DEV") {
+        stage("Clear Test Data (DEV)") {
             steps {
                 script {
                     def podName = sh(script: "kubectl get pods -l app=flask-dev -o jsonpath='{.items[0].metadata.name}'", returnStdout: true).trim()
@@ -96,7 +98,7 @@ pipeline {
                 script {
                     sh "sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:prod|' deployment-prod.yaml"
                     sh "kubectl apply -f deployment-prod.yaml"
-                    sh "kubectl apply -f service-prod.yaml"
+                    sh "kubectl apply -f service-prod.yaml || true"
                 }
             }
         }
