@@ -1,8 +1,6 @@
 import sqlite3
-import os
 
-# Always use DEV database for test data
-DB_PATH = "/nfs/dev_contacts.db"
+DB_PATH = "/nfs/dev_contacts.db"   
 
 def ensure_table():
     conn = sqlite3.connect(DB_PATH)
@@ -22,11 +20,10 @@ def generate_test_data():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    print("[OK] Clearing old *test* data only...")
+    print("[OK] Clearing old TEST data...")
     c.execute("DELETE FROM contacts WHERE name LIKE 'TestUser_%'")
 
     print("[OK] Inserting 20 test contacts...")
-
     for i in range(1, 21):
         c.execute(
             "INSERT INTO contacts (name, phone) VALUES (?, ?)",
