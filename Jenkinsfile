@@ -76,7 +76,7 @@ pipeline {
             steps {
                 sh '''
                     echo "[INFO] Waiting for DEV pod to start..."
-                    sleep 12
+                    sleep 10
                     kubectl get pods -n default
                 '''
             }
@@ -99,7 +99,7 @@ pipeline {
             steps {
                 sh "docker build -t qa-tests -f Dockerfile.test ."
                 sh "echo '[INFO] Test container built successfully'"
-                sleep 10
+                sleep 12
             }
         }
 
