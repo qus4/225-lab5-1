@@ -33,7 +33,7 @@ kind: Deployment
 metadata:
   name: flask-prod-deployment
   labels:
-    app: flask
+    app: flask-prod
 spec:
   replicas: 1
   selector:
@@ -71,4 +71,4 @@ spec:
     port: 80
     targetPort: 5000
   selector:
-    app: flask
+    app: flask-prod
