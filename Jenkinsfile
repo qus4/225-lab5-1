@@ -11,7 +11,7 @@ pipeline {
 
     stages {
 
-        /* -------------------- CHECKOUT -------------------- */
+        /* ------------------------- CHECKOUT ------------------------- */
         stage('Checkout Code') {
             steps {
                 cleanWs()
@@ -22,7 +22,7 @@ pipeline {
             }
         }
 
-        /* ------------------- LOAD KUBECONFIG ------------------- */
+        /* --------------------- LOAD KUBECONFIG ---------------------- */
         stage('Load Kubeconfig') {
             steps {
                 withCredentials([file(credentialsId: 'qus4-225', variable: 'KCFG_FILE')]) {
@@ -36,17 +36,20 @@ pipeline {
             }
         }
 
-        /* ------------------- AUTH TEST ------------------- */
+        /* --------------------- AUTH TEST ---------------------------- */
         stage('Test kubectl') {
             steps {
                 sh '''
+                    echo "[TEST] kubectl config view"
                     kubectl config view
+
+                    echo "[TEST] kubectl get nodes"
                     kubectl get nodes
                 '''
             }
         }
 
-        /* ------------------- BUILD ------------------- */
+        /* ------------------------- BUILD ---------------------------- */
         stage('Build & Push DEV Image') {
             steps {
                 script {
@@ -58,7 +61,7 @@ pipeline {
             }
         }
 
-        /* ------------------- DEPLOY DEV ------------------- */
+        /* ------------------------ DEV DEPLOY ------------------------ */
         stage('Deploy to DEV') {
             steps {
                 sh """
@@ -68,113 +71,81 @@ pipeline {
             }
         }
 
+        /* ------------------------ WAIT DEV -------------------------- */
         stage('Wait for DEV Pods') {
             steps {
                 sh '''
-                    sleep 10
+                    echo "[INFO] Waiting for DEV pod to start..."
+                    sleep 12
                     kubectl get pods -n default
                 '''
             }
         }
 
-        /* ⭐ DEMO PAUSE #1 */
-        stage('Pause Demo After DEV Deploy') {
-            steps {
-                sh '''
-                    echo "[DEMO PAUSE] 12s pause for DEV demo"
-                    sleep 12
-                '''
-            }
-        }
-
-        /* ------------------- TEST DATA ------------------- */
+        /* ---------------------- GENERATE DATA ----------------------- */
         stage('Generate Test Data (DEV)') {
             steps {
                 sh '''
                     POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
                     echo "Using POD: $POD"
                     kubectl exec $POD -- python3 data-gen.py
+                    sleep 5
                 '''
             }
         }
 
-        /* ⭐ DEMO PAUSE #2 */
-        stage('Pause Demo After Data Generation') {
-            steps {
-                sh '''
-                    echo "[DEMO PAUSE] 12s pause to show test data"
-                    sleep 12
-                '''
-            }
-        }
-
-        /* ------------------- TESTS ------------------- */
+        /* ------------------------ TESTS ----------------------------- */
         stage('Acceptance Tests') {
             steps {
                 sh "docker build -t qa-tests -f Dockerfile.test ."
+                sh "echo '[INFO] Test container built successfully'"
+                sleep 5
             }
         }
 
-        /* ⭐ DEMO PAUSE #3 */
-        stage('Pause Demo After Tests') {
-            steps {
-                sh '''
-                    echo "[DEMO PAUSE] 12s pause to show test results"
-                    sleep 12
-                '''
-            }
-        }
-
-        /* ------------------- CLEAR TEST DATA ------------------- */
+        /* ------------------------ CLEAR DATA ------------------------ */
         stage('Clear Test Data') {
             steps {
                 sh '''
                     POD=$(kubectl get pods -l app=flask-dev -o jsonpath="{.items[?(@.status.phase=='Running')].metadata.name}")
+                    echo "Using POD: $POD"
                     kubectl exec $POD -- python3 data-clear.py
+                    sleep 5
                 '''
             }
         }
 
-        /* ⭐ DEMO PAUSE #4 */
-        stage('Pause Before PROD Deploy') {
-            steps {
-                sh '''
-                    echo "[DEMO PAUSE] 12s pause before PROD deploy"
-                    sleep 12
-                '''
-            }
-        }
-
-        /* ------------------- DEPLOY PROD ------------------- */
+        /* ------------------------ PROD DEPLOY ----------------------- */
         stage('Deploy to PROD') {
             steps {
                 sh """
                     sed -i 's|cithit/qus4:latest|cithit/qus4:${IMAGE_TAG}|g' deployment-prod.yaml
                     kubectl apply -f deployment-prod.yaml
+                    echo '[INFO] Waiting for PROD to update...'
+                    sleep 10
                 """
             }
         }
 
-        /* ------------------- CLUSTER CHECK ------------------- */
+        /* -------------------- CLUSTER RESOURCES --------------------- */
         stage('Check Cluster Resources') {
             steps {
-                sh "kubectl get all -n default"
+                sh '''
+                    echo "[INFO] Checking cluster resources..."
+                    kubectl get all -n default
+                '''
             }
         }
     }
 
+    /* -------------------------- POST ------------------------------ */
     post {
-    success {
-        slackSend(
-            color: "good",
-            message: "Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
-        )
-    }
-    failure {
-        slackSend(
-            color: "danger",
-            message: "Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
-        )
+        success {
+            slackSend(color: "good", message: "Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+        }
+        failure {
+            slackSend(color: "danger", message: "Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+        }
     }
 }
 
