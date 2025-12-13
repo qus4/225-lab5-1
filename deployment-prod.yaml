@@ -1,3 +1,6 @@
+# -------------------------
+# Persistent Volume (only create once)
+# -------------------------
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -10,14 +13,18 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    path:  /srv/nfs/qus4         #replace with your username here, but don't change this IP as this is the file server.
+    path: /srv/nfs/qus4                 # YOUR MiamiID
     server: 10.48.228.25
   persistentVolumeReclaimPolicy: Retain
+
 ---
+# -------------------------
+# Persistent Volume Claim (only create once)
+# -------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: flask-pvc    
+  name: flask-pvc
 spec:
   accessModes:
     - ReadWriteMany
@@ -27,48 +34,56 @@ spec:
   selector:
     matchLabels:
       type: nfs
----      
+
+---
+# -------------------------
+# PROD Deployment
+# -------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flask-prod-deployment
   labels:
-    app: flask
+    app: flask-prod                     # MUST be flask-prod
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: flask
+      app: flask-prod                   # MUST match labels
   template:
     metadata:
       labels:
-        app: flask
+        app: flask-prod                 # MUST match labels
     spec:
       imagePullSecrets:
         - name: roseaw-dockerhub
       containers:
         - name: flask
-          image: cithit/qus4:latest    #your MiamiID
+          image: cithit/qus4:prod       # MUST NOT use latest
           ports:
             - containerPort: 5000
           volumeMounts:
             - name: nfs-storage
-              mountPath: /nfs       
+              mountPath: /nfs           # must match your Flask DB path (/nfs/demo.db)
       volumes:
         - name: nfs-storage
           persistentVolumeClaim:
-            claimName: flask-pvc    
+            claimName: flask-pvc
+
 ---
+# -------------------------
+# PROD Service
+# -------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: flask-prod-service
 spec:
-  type: LoadBalancer 
-  loadBalancerIP: 10.48.229.52        #update with your load balancer IP                             
+  type: LoadBalancer
+  loadBalancerIP: 10.48.229.52          # You already confirmed this IP is correct
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 5000
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
   selector:
-    app: flask
+    app: flask-prod                     # MUST match deployment labels
